@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PandaClaw</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-warm: #1e1c1a;
+      --bg-chat: #141312;
+      --text: #e8e5e1;
+      --text-dim: #9a9590;
+      --text-hint: #6a6560;
+      --accent: #d4a574;
+      --accent-hover: #e0b88a;
+      --bubble-ai: #242220;
+      --bubble-user: #2e2a26;
+      --input-bg: #1e1c1a;
+      --border: #302c28;
+    }
+
+    body {
+      font-family: -apple-system, "SF Pro Text", "Helvetica Neue", "PingFang SC", sans-serif;
+      background: var(--bg-warm);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ==================== WELCOME ==================== */
+    .welcome-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-warm);
+      z-index: 100;
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+
+    .welcome-screen.hiding {
+      opacity: 0;
+      transform: scale(1.02);
+      pointer-events: none;
+    }
+
+    .orb-container {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      margin-bottom: 40px;
+    }
+
+    .orb {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 40%, var(--accent), #8a6a4a);
+      animation: breathe 4s ease-in-out infinite;
+      opacity: 0.85;
+    }
+
+    .orb-glow {
+      position: absolute;
+      inset: -20px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(212, 165, 116, 0.15), transparent 70%);
+      animation: breathe 4s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); opacity: 0.85; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+
+    .welcome-text {
+      text-align: center;
+      animation: fadeUp 0.8s ease forwards;
+    }
+
+    .welcome-text h1 {
+      font-size: 28px;
+      font-weight: 300;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+
+    .welcome-text p {
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-bottom: 48px;
+    }
+
+    .start-btn {
+      background: var(--accent);
+      border: none;
+      color: var(--bg-warm);
+      font-size: 15px;
+      font-weight: 500;
+      padding: 14px 48px;
+      border-radius: 28px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .start-btn:hover { background: var(--accent-hover); transform: scale(1.02); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ==================== APP ==================== */
+    .app {
+      display: none;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    .app.visible { display: flex; }
+
+    .header {
+      padding: 14px 24px;
+      background: var(--bg-chat);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-orb {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 40%, var(--accent), #8a6a4a);
+      animation: breathe 4s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    .header h1 {
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--accent);
+      letter-spacing: 1.5px;
+    }
+
+    .stage-badge {
+      font-size: 11px;
+      color: var(--text-hint);
+      background: rgba(212, 165, 116, 0.1);
+      padding: 3px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .reload-btn {
+      background: var(--border);
+      border: none;
+      color: var(--text-hint);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-left: 8px;
+    }
+
+    .reload-btn:hover { background: var(--accent); color: var(--bg-warm); }
+
+    /* ==================== CHAT ==================== */
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: var(--bg-warm);
+    }
+
+    .chat-inner {
+      max-width: 640px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      font-size: 15px;
+      line-height: 1.6;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: fadeIn 0.4s ease forwards;
+      white-space: pre-wrap;
+    }
+
+    .message.ai {
+      align-self: flex-start;
+      background: var(--bubble-ai);
+      border-bottom-left-radius: 6px;
+    }
+
+    .message.ai + .message.ai { border-top-left-radius: 6px; }
+
+    .message.user {
+      align-self: flex-end;
+      background: var(--bubble-user);
+      border-bottom-right-radius: 6px;
+    }
+
+    .typing-indicator {
+      align-self: flex-start;
+      padding: 12px 16px;
+      opacity: 0;
+      animation: fadeIn 0.3s ease forwards;
+    }
+
+    .typing-indicator .dots {
+      display: inline-flex;
+      gap: 4px;
+    }
+
+    .typing-indicator .dot {
+      width: 6px;
+      height: 6px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+
+    .typing-indicator .dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-6px); }
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ==================== INPUT ==================== */
+    .input-area {
+      padding: 16px;
+      background: var(--bg-chat);
+      border-top: 1px solid var(--border);
+    }
+
+    .input-wrapper {
+      display: flex;
+      gap: 10px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    .input-wrapper input {
+      flex: 1;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 12px 20px;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-wrapper input:focus { border-color: var(--accent); }
+    .input-wrapper input::placeholder { color: var(--text-hint); }
+
+    .input-wrapper button {
+      background: var(--accent);
+      border: none;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.2s, transform 0.1s;
+      flex-shrink: 0;
+    }
+
+    .input-wrapper button:hover { opacity: 0.85; }
+    .input-wrapper button:active { transform: scale(0.95); }
+    .input-wrapper button:disabled { opacity: 0.3; cursor: default; }
+    .input-wrapper button svg { width: 20px; height: 20px; fill: var(--bg-warm); }
+
+    .chat-container::-webkit-scrollbar { width: 4px; }
+    .chat-container::-webkit-scrollbar-track { background: transparent; }
+    .chat-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    @media (max-width: 480px) {
+      .message { max-width: 88%; }
+    }
+
+    /* ==================== SUMMARY OVERLAY ==================== */
+    .summary-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+
+    .summary-overlay.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .summary-panel {
+      background: var(--bg-chat);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 560px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(20px);
+      transition: transform 0.4s ease;
+    }
+
+    .summary-overlay.visible .summary-panel {
+      transform: translateY(0);
+    }
+
+    .summary-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .summary-header h2 {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--accent);
+    }
+
+    .summary-close {
+      background: none;
+      border: none;
+      color: var(--text-hint);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    .summary-close:hover { color: var(--text); }
+
+    .summary-body {
+      padding: 20px 24px;
+      overflow-y: auto;
+      flex: 1;
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--text-dim);
+      white-space: pre-wrap;
+    }
+
+    .summary-body h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-top: 16px;
+      margin-bottom: 4px;
+    }
+
+    .summary-body h2:first-child { margin-top: 0; }
+
+    .summary-loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-hint);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="welcome-screen" id="welcomeScreen">
+    <div class="orb-container">
+      <div class="orb-glow"></div>
+      <div class="orb"></div>
+    </div>
+    <div class="welcome-text">
+      <h1>PANDACLAW</h1>
+      <p>一个能聊、能帮忙的伙伴</p>
+      <button class="start-btn" onclick="startChat()">开始</button>
+    </div>
+  </div>
+
+  <div class="app" id="app">
+    <div class="header">
+      <div class="header-left">
+        <div class="header-orb"></div>
+        <h1 id="aiName">PANDACLAW</h1>
+      </div>
+      <div style="display:flex;align-items:center;">
+        <span class="stage-badge" id="stageBadge">破冰</span>
+        <button class="reload-btn" onclick="reloadPrompts()">Reload</button>
+      </div>
+    </div>
+
+    <div class="chat-container" id="chatContainer">
+      <div class="chat-inner" id="chat"></div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrapper">
+        <input type="text" id="userInput" placeholder="说点什么..." disabled />
+        <button id="sendBtn" disabled onclick="sendMessage()">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="summary-overlay" id="summaryOverlay">
+    <div class="summary-panel">
+      <div class="summary-header">
+        <h2>Onboarding 完成</h2>
+        <button class="summary-close" onclick="closeSummary()">&times;</button>
+      </div>
+      <div class="summary-body" id="summaryBody">
+        <div class="summary-loading">正在生成总结...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentStage = 'icebreak';
+    let completed = '无';
+    let onboardingCompleted = false;
+    let conversationHistory = [];
+    let isProcessing = false;
+    let stageRound = 0;
+
+    const STAGE_LABELS = {
+      'icebreak': '破冰',
+      'onboarding': 'Onboarding',
+      'done': '完成'
+    };
+
+    const AVATAR_STYLES = {
+      '可爱': { colors: ['#ff9a9e', '#fad0c4'] },
+      '酷':   { colors: ['#667eea', '#764ba2'] },
+      '温柔': { colors: ['#a8edea', '#fed6e3'] },
+      '活泼': { colors: ['#f093fb', '#f5576c'] },
+      '冷静': { colors: ['#4facfe', '#00f2fe'] },
+      '神秘': { colors: ['#6a11cb', '#2575fc'] },
+    };
+
+    function applyProfile(profile) {
+      if (!profile) return;
+      if (profile.name) {
+        document.getElementById('aiName').textContent = profile.name;
+      }
+      const style = profile.style;
+      if (style) {
+        const match = Object.entries(AVATAR_STYLES).find(([key]) => style.includes(key));
+        if (match) {
+          const [c1, c2] = match[1].colors;
+          document.querySelector('.header-orb').style.background =
+            `radial-gradient(circle at 40% 40%, ${c1}, ${c2})`;
+        }
+      }
+      if (profile.gender) {
+        const orb = document.querySelector('.header-orb');
+        if (profile.gender.includes('女')) {
+          orb.style.background = 'radial-gradient(circle at 40% 40%, #ff9a9e, #fad0c4)';
+        } else if (profile.gender.includes('男')) {
+          orb.style.background = 'radial-gradient(circle at 40% 40%, #667eea, #764ba2)';
+        }
+      }
+    }
+
+    const chat = document.getElementById('chat');
+    const chatContainer = document.getElementById('chatContainer');
+    const input = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && !sendBtn.disabled) sendMessage();
+    });
+
+    function startChat() {
+      const welcome = document.getElementById('welcomeScreen');
+      welcome.classList.add('hiding');
+      setTimeout(() => {
+        welcome.style.display = 'none';
+        document.getElementById('app').classList.add('visible');
+        init();
+      }, 700);
+    }
+
+    function scrollToBottom() {
+      requestAnimationFrame(() => { chatContainer.scrollTop = chatContainer.scrollHeight; });
+    }
+
+    function addMessage(text, type) {
+      const div = document.createElement('div');
+      div.className = `message ${type}`;
+      div.textContent = text;
+      chat.appendChild(div);
+      scrollToBottom();
+    }
+
+    function showTyping() {
+      const div = document.createElement('div');
+      div.className = 'typing-indicator';
+      div.id = 'typing';
+      div.innerHTML = '<div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+      chat.appendChild(div);
+      scrollToBottom();
+    }
+
+    function hideTyping() {
+      const el = document.getElementById('typing');
+      if (el) el.remove();
+    }
+
+    function enableInput() {
+      input.disabled = false;
+      sendBtn.disabled = false;
+      input.focus();
+    }
+
+    function disableInput() {
+      input.disabled = true;
+      sendBtn.disabled = true;
+    }
+
+    async function showAIMessages(messages) {
+      for (let i = 0; i < messages.length; i++) {
+        showTyping();
+        const delay = Math.min(600 + messages[i].length * 40, 2000);
+        await new Promise(r => setTimeout(r, delay));
+        hideTyping();
+        addMessage(messages[i], 'ai');
+      }
+    }
+
+    async function sendMessage() {
+      const text = input.value.trim();
+      if (!text || isProcessing) return;
+
+      isProcessing = true;
+      disableInput();
+      input.value = '';
+      addMessage(text, 'user');
+
+      try {
+        showTyping();
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            stage: currentStage,
+            history: conversationHistory,
+            completed: completed
+          })
+        });
+
+        const data = await res.json();
+        hideTyping();
+
+        if (data.error) {
+          addMessage("出了点问题：" + data.error, 'ai');
+        } else {
+          conversationHistory.push({ role: 'user', content: text });
+          conversationHistory.push({ role: 'assistant', content: data.messages.join('|||') });
+
+          if (data.completed) completed = data.completed;
+          if (data.ai_profile) applyProfile(data.ai_profile);
+
+          const prevStage = currentStage;
+          if (data.next_stage && data.next_stage !== currentStage) {
+            currentStage = data.next_stage;
+            stageRound = 0;
+          } else {
+            stageRound++;
+          }
+
+          document.getElementById('stageBadge').textContent = STAGE_LABELS[currentStage] || currentStage;
+          await showAIMessages(data.messages);
+
+          if (currentStage === 'done' && prevStage !== 'done' && !onboardingCompleted) {
+            onboardingCompleted = true;
+            triggerSummary();
+          }
+        }
+      } catch (err) {
+        hideTyping();
+        addMessage("出了点小问题，再试一次？", 'ai');
+      }
+
+      isProcessing = false;
+      enableInput();
+    }
+
+    async function init() {
+      try {
+        const res = await fetch('/api/opening', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+
+        await new Promise(r => setTimeout(r, 800));
+        await showAIMessages(data.messages);
+        conversationHistory.push({ role: 'assistant', content: data.messages.join('|||') });
+        if (data.next_stage) currentStage = data.next_stage;
+        if (data.completed) completed = data.completed;
+        document.getElementById('stageBadge').textContent = STAGE_LABELS[currentStage] || currentStage;
+
+        enableInput();
+      } catch (err) {
+        addMessage("连接出了问题，请刷新页面重试。", 'ai');
+      }
+    }
+
+    async function triggerSummary() {
+      const overlay = document.getElementById('summaryOverlay');
+      const body = document.getElementById('summaryBody');
+      body.innerHTML = '<div class="summary-loading">正在生成总结...</div>';
+      overlay.classList.add('visible');
+
+      try {
+        const res = await fetch('/api/summary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ history: conversationHistory })
+        });
+        const data = await res.json();
+        if (data.summary) {
+          body.innerHTML = data.summary
+            .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+            .replace(/\n/g, '<br>');
+        } else {
+          body.textContent = '生成总结失败：' + (data.error || '未知错误');
+        }
+      } catch (err) {
+        body.textContent = '生成总结失败，请重试。';
+      }
+    }
+
+    function closeSummary() {
+      document.getElementById('summaryOverlay').classList.remove('visible');
+    }
+
+    async function reloadPrompts() {
+      const btn = document.querySelector('.reload-btn');
+      btn.textContent = '...';
+      try {
+        await fetch('/api/reload', { method: 'POST' });
+        currentStage = 'icebreak';
+        completed = '无';
+        conversationHistory = [];
+        isProcessing = false;
+        stageRound = 0;
+        onboardingCompleted = false;
+        chat.innerHTML = '';
+        disableInput();
+        document.getElementById('stageBadge').textContent = '破冰';
+        document.getElementById('aiName').textContent = 'PANDACLAW';
+        document.querySelector('.header-orb').style.background = '';
+
+
+        btn.textContent = 'OK';
+        setTimeout(() => { btn.textContent = 'Reload'; }, 800);
+        await init();
+      } catch (err) {
+        btn.textContent = 'Fail';
+        setTimeout(() => { btn.textContent = 'Reload'; }, 1500);
+      }
+    }
+  </script>
+</body>
+</html>

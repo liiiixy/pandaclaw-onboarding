@@ -1,0 +1,17 @@
+{
+  "name": "pandaclaw-onboarding",
+  "version": "0.1.0",
+  "description": "AI companion onboarding — director-led conversational flow",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["ai", "onboarding", "chatbot"],
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "js-yaml": "^4.1.1"
+  }
+}
